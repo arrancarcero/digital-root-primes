@@ -199,6 +199,51 @@ def build_sequence_windows(
     return sequences, targets
 
 
+def render_bar_chart(counts: Counter[int], width: int = 40) -> str:
+    """Render a simple proportional ASCII bar chart for class counts."""
+    if not counts:
+        return "(no data)"
+
+    max_count = max(counts.values())
+    lines: List[str] = []
+    for label in sorted(counts):
+        count = counts[label]
+        bar_len = max(1, int(round((count / max_count) * width)))
+        bar = "#" * bar_len
+        lines.append(f"{label:>3}: {bar} ({count})")
+    return "\n".join(lines)
+
+
+def build_mod9_transition_counts(rows: Sequence[Row]) -> Dict[tuple[int, int], int]:
+    """Count transitions between consecutive mod-9 residues in cleaned rows."""
+    transitions: Dict[tuple[int, int], int] = {}
+    if len(rows) < 2:
+        return transitions
+
+    for i in range(len(rows) - 1):
+        src = int(rows[i]["mod9"])
+        dst = int(rows[i + 1]["mod9"])
+        key = (src, dst)
+        transitions[key] = transitions.get(key, 0) + 1
+
+    return transitions
+
+
+def render_transition_grid(transitions: Dict[tuple[int, int], int]) -> str:
+    """Render a compact ASCII grid for mod-9 transition counts."""
+    residues = list(range(9))
+    header = "src\dst | " + " ".join(f"{r:>3}" for r in residues)
+    divider = "-" * len(header)
+    lines = [header, divider]
+
+    for src in residues:
+        row_counts = [transitions.get((src, dst), 0) for dst in residues]
+        row = " ".join(f"{value:>3}" for value in row_counts)
+        lines.append(f"{src:>7} | {row}")
+
+    return "\n".join(lines)
+
+
 def main() -> None:
     rows = build_prime_dataframe(1000)
     rows = clean_dataframe_for_learning(rows)
@@ -233,8 +278,16 @@ def main() -> None:
     print("Unique target classes:")
     print(sorted(set(targets)))
 
+    target_counts = Counter(targets)
     print("\nTarget frequency counts:")
-    print(Counter(targets))
+    print(target_counts)
+
+    print("\nTarget frequency visualization:")
+    print(render_bar_chart(target_counts))
+
+    transitions = build_mod9_transition_counts(rows)
+    print("\nMod-9 transition grid (cleaned sequence):")
+    print(render_transition_grid(transitions))
 
 
 if __name__ == "__main__":
