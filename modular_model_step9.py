@@ -1,8 +1,8 @@
 import math
 from collections import Counter
-from typing import List, Tuple
+from typing import Dict, List, Sequence, Tuple
 
-import pandas as pd
+Row = Dict[str, float | int | None]
 
 
 def is_prime(n: int) -> bool:
@@ -14,7 +14,7 @@ def is_prime(n: int) -> bool:
     if n % 2 == 0:
         return False
 
-    limit = int(n ** 0.5) + 1
+    limit = int(n**0.5) + 1
     for i in range(3, limit, 2):
         if n % i == 0:
             return False
@@ -23,7 +23,10 @@ def is_prime(n: int) -> bool:
 
 def generate_primes(count: int) -> List[int]:
     """Generate the first `count` primes."""
-    primes = []
+    if count < 0:
+        raise ValueError("count must be non-negative")
+
+    primes: List[int] = []
     candidate = 2
 
     while len(primes) < count:
@@ -73,12 +76,10 @@ def residue_role_mod9(n: int) -> int:
     return 0
 
 
-def build_prime_dataframe(count: int) -> pd.DataFrame:
-    """
-    Build a symbolic feature table for primes.
-    """
+def build_prime_dataframe(count: int) -> List[Row]:
+    """Build a symbolic feature table for primes."""
     primes = generate_primes(count)
-    rows = []
+    rows: List[Row] = []
 
     for i, p in enumerate(primes):
         prev_gap = None
@@ -113,33 +114,38 @@ def build_prime_dataframe(count: int) -> pd.DataFrame:
             }
         )
 
-    df = pd.DataFrame(rows)
-    return df
+    return rows
 
 
-def clean_dataframe_for_learning(df: pd.DataFrame) -> pd.DataFrame:
+def clean_dataframe_for_learning(rows: Sequence[Row]) -> List[Row]:
     """
     Clean the feature table for sequence learning.
     We drop rows where needed values are missing.
     """
-    df = df.copy()
+    cleaned_rows: List[Row] = []
 
-    # For the main prime pattern study, skip 2 and 3
-    df = df[df["prime"] > 3].copy()
+    for row in rows:
+        prime = int(row["prime"])
+        if prime <= 3:
+            continue
 
-    # Drop rows missing gaps or next target
-    df = df.dropna(subset=["prev_gap", "next_gap", "target_next_signed_mod9"]).copy()
+        required_values = (
+            row["prev_gap"],
+            row["next_gap"],
+            row["target_next_signed_mod9"],
+        )
+        if any(value is None for value in required_values):
+            continue
 
-    # Convert targets back to integer
-    df["target_next_signed_mod9"] = df["target_next_signed_mod9"].astype(int)
+        cleaned = dict(row)
+        cleaned["target_next_signed_mod9"] = int(cleaned["target_next_signed_mod9"])
+        cleaned_rows.append(cleaned)
 
-    return df
+    return cleaned_rows
 
 
-def build_feature_matrix(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
-    """
-    Select model features and target.
-    """
+def build_feature_matrix(rows: Sequence[Row]) -> Tuple[List[List[float]], List[int]]:
+    """Select model features and target."""
     feature_columns = [
         "prime",
         "mod3",
@@ -154,14 +160,19 @@ def build_feature_matrix(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
         "role_mod9",
     ]
 
-    X = df[feature_columns].copy()
-    y = df["target_next_signed_mod9"].copy()
+    X: List[List[float]] = []
+    y: List[int] = []
+
+    for row in rows:
+        X.append([float(row[column]) for column in feature_columns])
+        y.append(int(row["target_next_signed_mod9"]))
+
     return X, y
 
 
 def build_sequence_windows(
-    X: pd.DataFrame,
-    y: pd.Series,
+    X: Sequence[Sequence[float]],
+    y: Sequence[int],
     window_size: int = 5,
 ) -> Tuple[List[List[List[float]]], List[int]]:
     """
@@ -170,15 +181,17 @@ def build_sequence_windows(
     Each input sample is a window of `window_size` rows of features.
     The target is the next row's target value.
     """
-    X_values = X.values.tolist()
-    y_values = y.tolist()
+    if window_size <= 0:
+        raise ValueError("window_size must be positive")
+    if len(X) != len(y):
+        raise ValueError("X and y must be the same length")
 
-    sequences = []
-    targets = []
+    sequences: List[List[List[float]]] = []
+    targets: List[int] = []
 
-    for i in range(len(X_values) - window_size):
-        window = X_values[i : i + window_size]
-        target = y_values[i + window_size]
+    for i in range(len(X) - window_size):
+        window = [list(row) for row in X[i : i + window_size]]
+        target = y[i + window_size]
 
         sequences.append(window)
         targets.append(target)
@@ -187,17 +200,18 @@ def build_sequence_windows(
 
 
 def main() -> None:
-    df = build_prime_dataframe(1000)
-    df = clean_dataframe_for_learning(df)
+    rows = build_prime_dataframe(1000)
+    rows = clean_dataframe_for_learning(rows)
 
     print("Cleaned dataframe head:")
-    print(df.head(10))
+    for row in rows[:10]:
+        print(row)
     print()
 
-    X, y = build_feature_matrix(df)
+    X, y = build_feature_matrix(rows)
 
-    print("Feature matrix shape:", X.shape)
-    print("Target shape:", y.shape)
+    print("Feature matrix shape:", (len(X), len(X[0]) if X else 0))
+    print("Target shape:", (len(y),))
     print()
 
     window_size = 5
@@ -207,11 +221,13 @@ def main() -> None:
     print()
 
     print("Example sequence[0]:")
-    for step, row in enumerate(sequences[0]):
-        print(f"Step {step}: {row}")
+    if sequences:
+        for step, row in enumerate(sequences[0]):
+            print(f"Step {step}: {row}")
 
     print()
-    print("Example target[0]:", targets[0])
+    if targets:
+        print("Example target[0]:", targets[0])
 
     print()
     print("Unique target classes:")
