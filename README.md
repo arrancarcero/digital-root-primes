@@ -4,15 +4,24 @@ Does the digital root of a prime tell you anything about the digital root of the
 
 Short answer: yes, a little, and this repo measures how much and explains where it comes from.
 
+![Heatmap of which digital root follows which, for the first 1,000 primes](transition_heatmap.svg)
+
+Darker cells are more common. Three things show at a glance:
+
+- **The dashed diagonal is pale.** A prime is rarely followed by one with the same digital root.
+- **Each row has one darkest cell.** These are the smallest gap that root allows: a gap of 2 from roots 2, 5 and 8, and a gap of 4 from roots 1, 4 and 7 (a gap of 2 from those would land on a multiple of 3).
+- **Each row has a second dark cell.** These are all a gap of 6, which every root allows.
+
 ## What's here
 
 | File | What it does |
 |---|---|
 | `modular_model_step9.py` | Builds a feature table for the first 1,000 primes (mod 9, digital root, gaps) and prints the root-to-root transition grid. |
 | `experiment.py` | Trains sliding-window models to predict the next prime's digital root, with baselines and a control. |
+| `heatmap.py` | Draws the transition grid as the colour heatmap above (`transition_heatmap.svg`). No extra packages needed. |
 | `data/digital_root_prime_data/` | Every prime below 100,000 with its digital root, plus the frequency of each root. `experiment.py` re-checks this file against a fresh sieve. |
 
-Run with `python experiment.py` (needs only NumPy; takes a few seconds).
+Run the experiment with `python experiment.py` (needs only NumPy; takes a few seconds). Redraw the picture with `python heatmap.py`.
 
 ## Result
 
