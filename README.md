@@ -10,7 +10,7 @@ Darker cells are more common. Three things show at a glance:
 
 - **The dashed diagonal is pale.** A prime is rarely followed by one with the same digital root.
 - **Each row has one darkest cell.** These are the smallest gap that root allows: a gap of 2 from roots 2, 5 and 8, and a gap of 4 from roots 1, 4 and 7 (a gap of 2 from those would land on a multiple of 3).
-- **Each row has a second dark cell.** These are all a gap of 6, which every root allows.
+- **Each row has two more medium-dark cells.** One is a gap of 6, which every root allows. The other is the next gap that root allows: 10 from roots 1, 4 and 7, and 8 from roots 2, 5 and 8. In five of the six rows the gap of 6 is the more common; in the row for root 1 the two are level (38 and 39).
 
 ## What's here
 
